@@ -1,0 +1,11 @@
+KIT Data Manager BagIt Tool
+===========================
+
+1.0
+--------
+- Initial version
+- Support for basic export of digital objects into BagIt bags
+- Storing of base metadata in DataCite, DublinCore, and METS format
+- Support of fetching payload publicly accessible via http(s)
+- Serialization into ZIP file
+- Support for basic import of digital objects from BagIt bags following the RDRIWG recommendations
