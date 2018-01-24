@@ -17,14 +17,14 @@ In order to build and use the KIT Data Manager BagIt Tool you'll need:
 After obtaining the sources change to the folder where the sources are located and call:
 
 ```
-user@localhost:/home/user/KITDM-BagIt-Tool/base$ mvn assembly:assembly
+user@localhost:/home/user/kitdm-bagit-tool$ mvn assembly:assembly
 [INFO] Scanning for projects...
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] Building KITDM-BagIt-Tool <VERSION>
 [INFO] ------------------------------------------------------------------------
 [...]
-user@localhost:/home/user/KITDM-BagIt-Tool/base$
+user@localhost:/home/user/kitdm-bagit-tool$
 ```
 
 As soon as the build has finished, you'll find the command line tool at ./KITDM-BagIt-Tool-<VERSION>
@@ -36,15 +36,15 @@ In order to make the BagIt Tool as slim as possible, it does not contain any KIT
 Afterwards, the BagIt Tool can be invoked as follows:
 
 ```
-user@localhost:/home/user/KITDM-BagIt-Tool/base$ cd KITDM-BagIt-Tool-<VERSION>
-user@localhost:/home/user/KITDM-BagIt-Tool/base/KITDM-BagIt-Tool-<VERSION>$ ./bin/BagItTool
+user@localhost:/home/user/kitdm-bagit-tool$ cd KITDM-BagIt-Tool-<VERSION>
+user@localhost:/home/user/kitdm-bagit-tool/KITDM-BagIt-Tool-<VERSION>$ ./bin/BagItTool
 
 Usage: RepoInteropTool [options] [command] [command options]
   Commands:
     export      Performs the export of a digital object from a local repository.
       Usage: export [options]
 [...]
-user@localhost:/home/user/KITDM-BagIt-Tool/base/KITDM-BagIt-Tool-<VERSION>$
+user@localhost:/home/user/kitdm-bagit-tool/KITDM-BagIt-Tool-<VERSION>$
 ```
 
 The output of this call will provide you with usage information. Please read them carefully before starting your first export/import.
