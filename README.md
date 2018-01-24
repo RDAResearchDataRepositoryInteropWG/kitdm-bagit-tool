@@ -27,7 +27,7 @@ user@localhost:/home/user/kitdm-bagit-tool$ mvn assembly:assembly
 user@localhost:/home/user/kitdm-bagit-tool$
 ```
 
-As soon as the build has finished, you'll find the command line tool at ./KITDM-BagIt-Tool-<VERSION>
+As soon as the build has finished, you'll find the command line tool at ./KITDM-BagIt-Tool-&lt;VERSION&gt;
 
 ## How to use
 
