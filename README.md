@@ -27,7 +27,12 @@ user@localhost:/home/user/kitdm-bagit-tool$ mvn assembly:assembly
 user@localhost:/home/user/kitdm-bagit-tool$
 ```
 
-As soon as the build has finished, you'll find the command line tool at ./KITDM-BagIt-Tool-&lt;VERSION&gt;
+As soon as the build has finished, you'll find the command line tool at ./KITDM-BagIt-Tool-&lt;VERSION&gt;. Change to this folder and make the script 'bin/BagItTool' executable by calling: 
+
+```
+user@localhost:/home/user/kitdm-bagit-tool$chmod +x bin/BagItTool
+user@localhost:/home/user/kitdm-bagit-tool$
+```
 
 ## How to use
 
