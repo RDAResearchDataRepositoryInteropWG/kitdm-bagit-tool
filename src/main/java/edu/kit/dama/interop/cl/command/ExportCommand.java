@@ -35,8 +35,8 @@ public class ExportCommand extends CommandLineParameters{
   @Parameter(names = {"-o", "--destination"}, description = "The destination folder the bag will be stored.", required = true)
   public String destination = null;
 
-  @Parameter(names = {"-m", "--metadataFile"}, description = "Additional metadata file in the properties format <key>:<value> written into bag-info.txt. This file should contain all metadata field that are required by the used profile. "
-          + "If missing, some properties can be auto-generated, e.g. Bagging-Date, others like Contact-Email won't be generated and their absence may stop the export.", required = false)
+  @Parameter(names = {"-m", "--metadataFile"}, description = "Additional metadata file in standard properties format <key>:<value> written into bag-info.txt. This file must contain all metadata fields that are required by the used profile. "
+          + "If at least one required property is missing, the export will fail. If the used profile does not require any mandatory properties, this argument can be skipped. ", required = false)
   public String metadataFile = null;
 
   @Parameter(names = {"-f", "--force"}, description = "Force the creation of the bag at the provided destination. Otherwise, the export will not be performed if destination exists.", required = false)

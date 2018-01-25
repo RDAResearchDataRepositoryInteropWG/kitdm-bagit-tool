@@ -27,6 +27,7 @@ import edu.kit.dama.mdm.dataorganization.entity.core.IFileNode;
 import edu.kit.dama.mdm.dataorganization.entity.core.IFileTree;
 import edu.kit.dama.mdm.dataorganization.service.core.DataOrganizer;
 import edu.kit.dama.mdm.dataorganization.service.core.DataOrganizerFactory;
+import gov.loc.repository.bagit.domain.Bag;
 import gov.loc.repository.bagit.domain.FetchItem;
 import java.net.URI;
 import java.net.URL;
@@ -41,8 +42,6 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -50,8 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class METSTagFileCreator extends AbstractTagFileCreator{
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(METSTagFileCreator.class);
-  private static final ResourceBundle messages = ResourceBundle.getBundle("edu.kit.dama.interop.impl.MessageBundle");
+  private static final ResourceBundle MESSAGES = ResourceBundle.getBundle("edu.kit.dama.interop.impl.MessageBundle");
 
   public static METSTagFileCreator createInstance(){
     return new METSTagFileCreator();
@@ -84,7 +82,7 @@ public class METSTagFileCreator extends AbstractTagFileCreator{
                   try{
                     dataLocation = getNodePath(theObject.getDigitalObjectId(), fileUri.toURL().toString(), t.getViewName());
                   } catch(Exception e){
-                    AnsiUtil.printError(messages.getString("failed_to_determine_data_location"), e, theObject.getDigitalObjectIdentifier(), t.getName(), t.getViewName());
+                    AnsiUtil.printError(MESSAGES.getString("failed_to_determine_data_location"), e, theObject.getDigitalObjectIdentifier(), t.getName(), t.getViewName());
                   }
                   fetchMap.put("data/" + dataLocation, fileUri);
                   return lfn;
@@ -97,29 +95,29 @@ public class METSTagFileCreator extends AbstractTagFileCreator{
     metsBuilder.write(Files.newOutputStream(metsOutputPath));
 
     //Adding collected payload elements to bag
-    AnsiUtil.printInfo(messages.getString("adding_payload_elements"), Integer.toString(payloadElements.size()));
+    AnsiUtil.printInfo(MESSAGES.getString("adding_payload_elements"), Integer.toString(payloadElements.size()));
     for(PayloadElement element : payloadElements){
-      AnsiUtil.printInfo(messages.getString("adding_payload_element"), element.getPayloadPath());
+      AnsiUtil.printInfo(MESSAGES.getString("adding_payload_element"), element.getPayloadPath());
 
       theBagBuilder = theBagBuilder.addPayload(Paths.get(URI.create(element.getBasePath())), URI.create(element.getPayloadPath()), element.getBagDataPath());
     }
 
     //adding created fetch elements to bag
     Set<Map.Entry<String, URI>> fetchEntries = fetchMap.entrySet();
-    AnsiUtil.printInfo(messages.getString("adding_fetch_items"), Integer.toString(fetchEntries.size()));
+    AnsiUtil.printInfo(MESSAGES.getString("adding_fetch_items"), Integer.toString(fetchEntries.size()));
     for(Map.Entry<String, URI> entry : fetchEntries){
       URL fileUrl = entry.getValue().toURL();
-      AnsiUtil.printInfo(messages.getString("adding_fetch_item"), entry.getKey(), fileUrl.toString());
+      AnsiUtil.printInfo(MESSAGES.getString("adding_fetch_item"), entry.getKey(), fileUrl.toString());
       URLConnection connection = fileUrl.openConnection();
       long contentLength = Long.parseLong(connection.getHeaderField("Content-Length"));
 
-      theBagBuilder = theBagBuilder.addFetchFile(new FetchItem(fileUrl, contentLength, Paths.get(entry.getKey())));
+      theBagBuilder = theBagBuilder.addFetchItem(new FetchItem(fileUrl, contentLength, Paths.get(entry.getKey())));
     }
     return metsOutputPath;
   }
 
   @Override
-  DigitalObject createDigitalObject(Path tagFile) throws Exception{
+  DigitalObject createDigitalObject(Path tagFile, Bag theBag) throws Exception{
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 

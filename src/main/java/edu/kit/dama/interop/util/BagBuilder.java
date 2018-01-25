@@ -15,8 +15,6 @@
  */
 package edu.kit.dama.interop.util;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import gov.loc.repository.bagit.conformance.BagProfileChecker;
@@ -34,7 +32,6 @@ import gov.loc.repository.bagit.reader.BagReader;
 import gov.loc.repository.bagit.verify.BagVerifier;
 import gov.loc.repository.bagit.verify.QuickVerifier;
 import gov.loc.repository.bagit.writer.BagWriter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -65,12 +62,12 @@ import org.apache.commons.io.FileUtils;
  */
 public class BagBuilder{
 
-  private static final ResourceBundle messages = ResourceBundle.getBundle("edu.kit.dama.interop.util.MessageBundle");
+  private static final ResourceBundle MESSAGES = ResourceBundle.getBundle("edu.kit.dama.interop.util.MessageBundle");
 
   /**
    * Default profile used if no other profile is provided.
    */
-  public static String BAGIT_PROFILE_LOCATION = "https://raw.githubusercontent.com/RDAResearchDataRepositoryInteropWG/bagit-profiles/master/generic/0.1/profile.json";
+  public static String BAGIT_PROFILE_LOCATION = "https://raw.githubusercontent.com/RDAResearchDataRepositoryInteropWG/bagit-profiles/master/kitdm/1.0/profile.json";
 
   enum FILE_TYPE{
     PAYLOAD,
@@ -78,15 +75,44 @@ public class BagBuilder{
     RDA_METADATA;
   }
 
+  /**
+   * The bag holding all information added by the builder.
+   */
   private final Bag theBag;
-  private final Metadata bagMetadata;
-  private final Set<Manifest> payloadManifests = new HashSet<>();
-  private final Set<Manifest> tagManifests = new HashSet<>();
-  private List<FetchItem> fetchItems = null;
-  private String bagProfile = BAGIT_PROFILE_LOCATION;
-  private long bagSize = 0;
-  private long payloadSize = 0;
+  /**
+   * The BagIt profile loaded from the profileLocation.
+   */
   private BagitProfile profile;
+  /**
+   * Bag metadata holding all information stored in the bag's bag-info.txt
+   */
+  private final Metadata bagMetadata;
+  /**
+   * All payload manifests of the bag.
+   */
+  private final Set<Manifest> payloadManifests = new HashSet<>();
+  /**
+   * All tag manifests of the bag.
+   */
+
+  private final Set<Manifest> tagManifests = new HashSet<>();
+  /**
+   * All fetch items of the bag.
+   */
+
+  private List<FetchItem> fetchItems = null;
+  /**
+   * The URL to the used BagIt profile.
+   */
+  private String profileLocation = BAGIT_PROFILE_LOCATION;
+  /**
+   * The current bag size.
+   */
+  private long bagSize = 0;
+  /**
+   * The current size of all payload items.
+   */
+  private long payloadSize = 0;
 
   /**
    * Hidden default constructor used by {@link #create(java.nio.file.Path, java.lang.String)
@@ -99,14 +125,14 @@ public class BagBuilder{
    */
   BagBuilder(Path rootDir, String profileUrl) throws Exception{
     theBag = new Bag(new Version(0, 97));
-    bagProfile = profileUrl;
+    profileLocation = profileUrl;
     theBag.setRootDir(rootDir);
     theBag.setFileEncoding(Charset.forName("UTF-8"));
     bagMetadata = new Metadata();
-    bagMetadata.add("BagIt-Profile-Identifier", bagProfile);
+    bagMetadata.add("BagIt-Profile-Identifier", profileLocation);
     theBag.setMetadata(bagMetadata);
     //load profile
-    profile = parseBagitProfile(new URL(bagProfile).openStream());
+    profile = parseBagitProfile(new URL(profileLocation).openStream());
     //build set of required payload manifests
     List<String> payloadMmanifestsRequired = profile.getManifestTypesRequired();
     payloadMmanifestsRequired.stream().map((required) -> new Manifest(StandardSupportedAlgorithms.valueOf(required.toUpperCase()))).map((manifestType) -> {
@@ -204,30 +230,54 @@ public class BagBuilder{
   }
 
   /**
-   * Returns a list of required bag info elements.
+   * Add user-provided properties as metadata entries to the bag. The properties
+   * object is expected to contain at least all mandatory properties required
+   * according to the used BagIt profile. Only the property External-Identifier
+   * is added by this tool. Furthermore, other properties can be added.
+   *
+   * @param properties The properties added as metadata into bag-info.txt
+   *
+   * @throws Exception If at least one mandatory property (according to the used
+   * profile) is missing or if the property value does not match any element of
+   * the list of acceptable value (according to the profile).
    */
-  public void validateAndAddMetadataProperties(Properties props) throws Exception{
+  public void validateAndAddMetadataProperties(Properties properties) throws Exception{
     Set<Entry<String, BagInfoRequirement>> requirements = profile.getBagInfoRequirements().entrySet();
-
+    
     for(Entry<String, BagInfoRequirement> requirement : requirements){
-      String propValue = props.getProperty(requirement.getKey());
+      String propValue = properties.getProperty(requirement.getKey());
+      boolean elementAlreadyExists = false;
       if(requirement.getValue().isRequired()){
-        if(propValue == null){
-
-          throw new Exception("Mandatory bag-info metadata element " + requirement.getKey() + " is missing.");
+        final List<String> existingMetadata = theBag.getMetadata().get(requirement.getKey());
+        if(propValue == null && (existingMetadata == null || existingMetadata.isEmpty())){
+          throw new Exception(StringUtils.substitute(MESSAGES.getString("mandatory_metadata_missing"), requirement.getKey()));
+        } else{
+          elementAlreadyExists = propValue == null && existingMetadata != null && !existingMetadata.isEmpty();
         }
       }
 
       List<String> acceptableValues = requirement.getValue().getAcceptableValues();
       if(acceptableValues != null && !acceptableValues.isEmpty()){
         if(!acceptableValues.contains(propValue)){
-          throw new Exception("Value " + propValue + " of metadata element " + requirement.getKey() + " is not in list of acceptable values " + acceptableValues + ".");
+          throw new Exception(StringUtils.substitute(MESSAGES.getString("invalid_metadata_value"), propValue, requirement.getKey(), acceptableValues.toString()));
         }
       }
-      addMetadata(requirement.getKey(), propValue);
-      props.remove(requirement.getKey());
+
+      //re-enable adding metadata as soon as bagit-java supports the 'repeatable' property
+      //addMetadata(requirement.getKey(), propValue);
+      if(propValue != null && !elementAlreadyExists){
+        replaceMetadata(requirement.getKey(), propValue);
+        properties.remove(requirement.getKey());
+      } else{
+        properties.remove(requirement.getKey());
+      }
     }
 
+    //add other user-provided properties not required by the profile
+    Set<Object> additionalProps = properties.keySet();
+    additionalProps.forEach((key) -> {
+      addMetadata((String) key, (String) properties.getProperty((String) key));
+    });
   }
 
   /**
@@ -257,8 +307,10 @@ public class BagBuilder{
   }
 
   /**
-   * Add a metadata field and its value. All added fields are stored later in
-   * bag-info.txt
+   * Add a metadata field and its value later written to bag-info.txt. This
+   * method only adds metadata fields. If there is already a field for the
+   * provided key, the new value will be added as second entry with the same
+   * key. All added fields are stored later in bag-info.txt
    *
    * @param key The metadata key.
    * @param value The metadata value.
@@ -266,8 +318,22 @@ public class BagBuilder{
    * @return This BagBuilder instance.
    */
   public BagBuilder addMetadata(String key, String value){
-    bagMetadata.add(key, value);
-    return this;
+    return addOrReplaceMetadata(key, value, false);
+  }
+
+  /**
+   * Add a metadata field and its value later written to bag-info.txt. This
+   * method takes care, that there is only one entry with the provided key in
+   * the bag metadata. If there is already a field for the provided key, the
+   * existing element is replaced by the provided value.
+   *
+   * @param key The metadata key.
+   * @param value The metadata value.
+   *
+   * @return This BagBuilder instance.
+   */
+  public BagBuilder replaceMetadata(String key, String value){
+    return addOrReplaceMetadata(key, value, true);
   }
 
   /**
@@ -353,7 +419,7 @@ public class BagBuilder{
    * Fetching is only available for payload elements and must be allowed by the
    * BagIt profile associated to the bag. In order to create the checkums of the
    * fetch file, the file must be opened and read. If you want to avoid reading
-   * the fetch files, you may use {@link #addFetchFile(gov.loc.repository.bagit.domain.FetchItem, java.util.Map)
+   * the fetch files, you may use {@link #addFetchItem(gov.loc.repository.bagit.domain.FetchItem, java.util.Map)
    * } and provide all requested checksums manually. You can obtain the list of
    * required checksums by calling {@link #getRequiredPayloadManifestTypes()} or {@link #getRequiredTagManifestTypes()
    * }.
@@ -365,13 +431,11 @@ public class BagBuilder{
    * @throws Exception If fetching items is not allowed by the used profile or
    * if the fetch items input stream cannot be opened.
    */
-  public BagBuilder addFetchFile(FetchItem item) throws Exception{
+  public BagBuilder addFetchItem(FetchItem item) throws Exception{
     if(fetchItems == null){
-      throw new Exception("Fetching is not allowed by profile.");
+      throw new Exception(MESSAGES.getString("fetching_not_allowed"));
     }
     payloadSize += item.getLength();
-    // Path dataPath = theBag.getRootDir().resolve("data");
-    // Path inBagPath = Paths.get(dataPath.toString(), item.getPath().toString());
     Path thePath = theBag.getRootDir().resolve(item.getPath());
     fetchItems.add(new FetchItem(item.getUrl(), item.getLength(), thePath));
 
@@ -395,20 +459,20 @@ public class BagBuilder{
    * @throws Exception If fetching items is not allowed by the used profile or
    * if the fetch items input stream cannot be opened.
    */
-  public BagBuilder addFetchFile(FetchItem item, Map<String, String> checksums) throws Exception{
+  public BagBuilder addFetchItem(FetchItem item, Map<String, String> checksums) throws Exception{
     if(fetchItems == null){
-      throw new Exception("Fetching is not allowed by profile.");
+      throw new Exception(MESSAGES.getString("fetching_not_allowed"));
     }
     payloadSize += item.getLength();
-    Path dataPath = theBag.getRootDir().resolve("data");
-    Path inBagPath = Paths.get(dataPath.toString(), item.getPath().toString());
+    Path thePath = theBag.getRootDir().resolve(item.getPath());
 
-    fetchItems.add(new FetchItem(item.getUrl(), item.getLength(), theBag.getRootDir().relativize(inBagPath)));
+    fetchItems.add(new FetchItem(item.getUrl(), item.getLength(), thePath));
 
     theBag.getPayLoadManifests().forEach((manifest) -> {
       String checksum = checksums.get(manifest.getAlgorithm().getMessageDigestName());
+      AnsiUtil.printInfo(MESSAGES.getString("adding_user_provided_checksum"), thePath.toString(), checksum, manifest.getAlgorithm().getMessageDigestName());
       if(checksum != null){
-        manifest.getFileToChecksumMap().put(inBagPath, checksum);
+        manifest.getFileToChecksumMap().put(thePath, checksum);
       }
     });
 
@@ -421,9 +485,9 @@ public class BagBuilder{
    * @throws Exception If the bag is not compliant to the specified profile.
    */
   public void validateProfileConformance() throws Exception{
-    AnsiUtil.printInfo(messages.getString("performing_profile_check"));
-    BagProfileChecker.bagConformsToProfile(new URL(bagProfile).openStream(), theBag);
-    AnsiUtil.printInfo(messages.getString("profile_check_successful"), bagProfile);
+    AnsiUtil.printInfo(MESSAGES.getString("performing_profile_check"));
+    BagProfileChecker.bagConformsToProfile(new URL(profileLocation).openStream(), theBag);
+    AnsiUtil.printInfo(MESSAGES.getString("profile_check_successful"), profileLocation);
   }
 
   /**
@@ -442,19 +506,19 @@ public class BagBuilder{
    * @throws Exception If any of the checksums in any bag manifest is not valid.
    */
   public void validateChecksums(boolean fetchFilesDownloaded) throws Exception{
-    AnsiUtil.printInfo(messages.getString("checking_quick_verify_support"));
+    AnsiUtil.printInfo(MESSAGES.getString("checking_quick_verify_support"));
     if(BagVerifier.canQuickVerify(theBag)){
-      AnsiUtil.printInfo(messages.getString("performing_quick_verify"));
+      AnsiUtil.printInfo(MESSAGES.getString("performing_quick_verify"));
       QuickVerifier.quicklyVerify(theBag);
     } else{
       if(fetchFilesDownloaded){
-        AnsiUtil.printWarning(messages.getString("quick_verify_not_supported_but_files_fetched"));
+        AnsiUtil.printWarning(MESSAGES.getString("quick_verify_not_supported_but_files_fetched"));
         new BagVerifier(new StandardBagitAlgorithmNameToSupportedAlgorithmMapping()).isValid(theBag, true);
       } else{
-        AnsiUtil.printWarning(messages.getString("quick_verify_not_supported"));
+        AnsiUtil.printWarning(MESSAGES.getString("quick_verify_not_supported"));
       }
     }
-    AnsiUtil.printInfo(messages.getString("verification_successful"));
+    AnsiUtil.printInfo(MESSAGES.getString("verification_successful"));
   }
 
   /**
@@ -520,7 +584,16 @@ public class BagBuilder{
     return payloadSize;
   }
 
-  private BagitProfile parseBagitProfile(final InputStream jsonProfile) throws JsonParseException, JsonMappingException, IOException{
+  /**
+   * Parse a BagIt profile from an InputStream.
+   *
+   * @param jsonProfile The input stream.
+   *
+   * @return The BagItProfile.
+   *
+   * @throws IOException if the profile cannot be read or has no valid format.
+   */
+  private BagitProfile parseBagitProfile(final InputStream jsonProfile) throws IOException{
     final ObjectMapper mapper = new ObjectMapper();
     final SimpleModule module = new SimpleModule();
     module.addDeserializer(BagitProfile.class, new BagitProfileDeserializer());
@@ -549,13 +622,13 @@ public class BagBuilder{
     Path filePath = Paths.get(fileUri);
 
     if(inBagLocation != null && !filePath.startsWith(rootPath)){
-      throw new IOException("File path " + filePath + " is not relative to root path " + rootPath + ".");
+      throw new IOException(StringUtils.substitute(MESSAGES.getString("file_not_under_bag_root"), filePath.toString(), rootPath.toString()));
     }
     if(!Files.exists(filePath)){
-      throw new FileNotFoundException("File path " + filePath + " does not exist.");
+      throw new IOException(StringUtils.substitute(MESSAGES.getString("file_not_exist"), filePath.toString()));
     }
     if(!Files.isReadable(filePath)){
-      throw new IOException("File path " + filePath + " is not readable.");
+      throw new IOException(StringUtils.substitute(MESSAGES.getString("file_not_readable"), filePath.toString()));
     }
 
     Path destination;
@@ -624,18 +697,46 @@ public class BagBuilder{
   }
 
   /**
-   * Generate and adds all checksums required by the used BagIt profile.
+   * Adds or replaces a single metadata field and its value later written to
+   * bag-info.txt.
+   *
+   * @param key The metadata key.
+   * @param value The metadata value.
+   * @param replaceIfExists If TRUE, existing metadata with the same key is
+   * replaced. Otherwise, a new entry with the same key is added.
+   *
+   * @return This BagBuilder instance.
+   */
+  private BagBuilder addOrReplaceMetadata(String key, String value, boolean replaceIfExists){
+    if(replaceIfExists && bagMetadata.contains(key)){
+      bagMetadata.remove(key);
+    }
+    bagMetadata.add(key, value);
+    return this;
+  }
+
+  /**
+   * Generate and add all checksums required by the used BagIt profile.
    * Depending on the provide type, the checksum(s) are added either to the
-   * payload manifests or to the tagfile manifest. In order to generate the
-   * checksums, the entire file has to be read once using the provided input
+   * payload manifest(s) or the tagfile manifest(s). In order to generate the
+   * checksum(s), the entire file has to be read once using the provided input
    * stream.
    *
+   * @param filePath The absolute file path relative to the bag root.
+   * @param stream The input stream which is either the stream to filePath or a
+   * stream to an external resource when adding fetch files.
+   * @param type The file type defining to which manifest the checksums are
+   * written, which is either the tag-manifest (type TAGFILE or RDA_METADATA) or
+   * the payload manifest (type PAYLOAD).
+   *
+   * @throws IOException if nothing can be read from the input stream.
    */
   private void generateChecksums(Path filePath, InputStream stream, FILE_TYPE type) throws IOException{
-    int read = 0;
+    int read;
     byte[] data = new byte[100 * (int) FileUtils.ONE_KB];
     Map<String, MessageDigest> digestMap = new HashMap<>();
 
+    AnsiUtil.printInfo(MESSAGES.getString("generating_checksums"), filePath.toString());
     switch(type){
       case PAYLOAD: {
         theBag.getPayLoadManifests().stream().map((manifest) -> manifest.getAlgorithm().getMessageDigestName()).forEachOrdered((digestName) -> {
@@ -651,6 +752,7 @@ public class BagBuilder{
       }
     }
 
+    AnsiUtil.printInfo(MESSAGES.getString("creating_checksums_from_stream"), Integer.toString(digestMap.size()));
     while((read = stream.read(data)) > -1){
       for(Entry<String, MessageDigest> digest : digestMap.entrySet()){
         digest.getValue().update(data, 0, read);
@@ -661,20 +763,24 @@ public class BagBuilder{
     switch(type){
       case PAYLOAD: {
         theBag.getPayLoadManifests().forEach((manifest) -> {
-          MessageDigest digest = digestMap.get(manifest.getAlgorithm().getMessageDigestName());
-          manifest.getFileToChecksumMap().put(filePath, Hex.encodeHexString(digest.digest()));
+          final String digestName = manifest.getAlgorithm().getMessageDigestName();
+          final MessageDigest digest = digestMap.get(manifest.getAlgorithm().getMessageDigestName());
+          final String checksum = Hex.encodeHexString(digest.digest());
+          AnsiUtil.printInfo(MESSAGES.getString("adding_checksum_to_manifest"), digestName, checksum, "payload");
+          manifest.getFileToChecksumMap().put(filePath, checksum);
         });
         break;
       }
       default: {
         theBag.getTagManifests().forEach((manifest) -> {
-          MessageDigest digest = digestMap.get(manifest.getAlgorithm().getMessageDigestName());
-          manifest.getFileToChecksumMap().put(filePath, Hex.encodeHexString(digest.digest()));
+          final String digestName = manifest.getAlgorithm().getMessageDigestName();
+          final MessageDigest digest = digestMap.get(manifest.getAlgorithm().getMessageDigestName());
+          final String checksum = Hex.encodeHexString(digest.digest());
+          AnsiUtil.printInfo(MESSAGES.getString("adding_checksum_to_manifest"), digestName, checksum, "tag");
+          manifest.getFileToChecksumMap().put(filePath, checksum);
         });
-        break;
       }
     }
-
   }
 
 }

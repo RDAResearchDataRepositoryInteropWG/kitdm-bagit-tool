@@ -20,12 +20,14 @@ import edu.kit.dama.entities.dc40.DataResource;
 import edu.kit.dama.entities.dc40.ResourceType;
 import edu.kit.dama.entities.dc40.Title;
 import edu.kit.dama.entities.dc40.User;
+import edu.kit.dama.interop.util.AnsiUtil;
 import edu.kit.dama.interop.util.BagBuilder;
 import edu.kit.dama.interop.util.DataCiteResourceHelper;
 import edu.kit.dama.mdm.base.DigitalObject;
 import edu.kit.dama.mdm.base.UserData;
 import edu.kit.dama.util.Constants;
 import edu.kit.dama.util.DCTransformationHelper;
+import gov.loc.repository.bagit.domain.Bag;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,6 +36,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ResourceBundle;
+import java.util.UUID;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import org.apache.commons.io.FileUtils;
@@ -46,7 +50,9 @@ import org.datacite.schema.kernel_4.Resource.Creators.Creator;
  */
 public class DataCiteTagFileCreator extends AbstractTagFileCreator{
 
-  private String creatorId;
+  private static final ResourceBundle MESSAGES = ResourceBundle.getBundle("edu.kit.dama.interop.impl.MessageBundle");
+
+  private final String creatorId;
 
   DataCiteTagFileCreator(){
     this.creatorId = Constants.WORLD_USER_ID;
@@ -108,29 +114,37 @@ public class DataCiteTagFileCreator extends AbstractTagFileCreator{
   }
 
   @Override
-  DigitalObject createDigitalObject(Path tagFile) throws Exception{
+  DigitalObject createDigitalObject(Path tagFile, Bag theBag) throws Exception{
     Unmarshaller unmarshaller = org.eclipse.persistence.jaxb.JAXBContext.newInstance(Resource.class).createUnmarshaller();
     Resource resource = (Resource) unmarshaller.unmarshal(tagFile.toFile());
 
     String identifier = DataCiteResourceHelper.getIdentifier(resource);
     if(identifier == null){
-      throw new Exception("No valid resource identifier found. Neither the primary identifier not an alternate identifier are assigned.");
+      AnsiUtil.printWarning(MESSAGES.getString("no_identifier_detected"));
+      List<String> internalIdentifier = theBag.getMetadata().get("Internal_Identifier");
+      if(!internalIdentifier.isEmpty()){
+        AnsiUtil.printWarning(MESSAGES.getString("using_internal_identifier"));
+        identifier = internalIdentifier.get(0);
+      } else{
+        identifier = UUID.randomUUID().toString();
+        AnsiUtil.printWarning(MESSAGES.getString("internal_identifier_not_found"), identifier);
+      }
     }
 
     DigitalObject object = DigitalObject.factoryNewDigitalObject(identifier);
     object.setLabel(DataCiteResourceHelper.getTitle(resource));
 
     if(object.getLabel() == null){
-      object.setLabel("Created from DataCite metadata.");
+      object.setLabel("Created from " + getMetadataType() + " metadata.");
     }
 
     List<Creator> creators = resource.getCreators().getCreator();
     if(!creators.isEmpty()){
       Creator creator = creators.get(0);
       if(!creator.getNameIdentifier().isEmpty()){
-        String creatorId = creator.getNameIdentifier().get(0).getValue();
+        String creatorIdentifier = creator.getNameIdentifier().get(0).getValue();
         UserData user = new UserData();
-        user.setDistinguishedName(creatorId);
+        user.setDistinguishedName(creatorIdentifier);
         object.setUploader(user);
         object.addExperimenter(user);
       } else{

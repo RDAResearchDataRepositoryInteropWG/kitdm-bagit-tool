@@ -34,25 +34,25 @@ import static org.fusesource.jansi.Ansi.ansi;
  */
 public abstract class AbstractTagFileCreator{
 
-  private static final ResourceBundle messages = ResourceBundle.getBundle("edu.kit.dama.interop.impl.MessageBundle");
+  private static final ResourceBundle MESSAGES = ResourceBundle.getBundle("edu.kit.dama.interop.impl.MessageBundle");
 
   private Path metadataPath = null;
 
   public void createAndAddTagFile(DigitalObject theObject, BagBuilder theBagBuilder) throws Exception{
-    AnsiUtil.printInfo(messages.getString("creating_metadata"), getMetadataType());
+    AnsiUtil.printInfo(MESSAGES.getString("creating_metadata"), getMetadataType());
     Path tagFile = createTagFile(theObject, theBagBuilder);
-    AnsiUtil.printInfo(messages.getString("adding_tag_file"), tagFile.toString());
+    AnsiUtil.printInfo(MESSAGES.getString("adding_tag_file"), tagFile.toString());
     theBagBuilder.addTagfile(tagFile.toUri());
   }
 
-  public DigitalObject parseObjectFromTagFile(Path tagFile) throws Exception{
-    AnsiUtil.printInfo(messages.getString("reading_digital_object_from_tag_file"), tagFile.toString());
-    return createDigitalObject(tagFile);
+  public DigitalObject parseObjectFromTagFile(Path tagFile, Bag theBag) throws Exception{
+    AnsiUtil.printInfo(MESSAGES.getString("reading_digital_object_from_tag_file"), tagFile.toString());
+    return createDigitalObject(tagFile, theBag);
   }
 
   abstract Path createTagFile(DigitalObject theObject, BagBuilder theBag) throws Exception;
 
-  abstract DigitalObject createDigitalObject(Path tagFile) throws Exception;
+  abstract DigitalObject createDigitalObject(Path tagFile, Bag theBag) throws Exception;
 
   abstract String getMetadataType();
 

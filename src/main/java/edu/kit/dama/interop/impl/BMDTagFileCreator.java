@@ -17,6 +17,7 @@ package edu.kit.dama.interop.impl;
 
 import edu.kit.dama.interop.util.BagBuilder;
 import edu.kit.dama.mdm.base.DigitalObject;
+import gov.loc.repository.bagit.domain.Bag;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -50,7 +51,7 @@ public class BMDTagFileCreator extends AbstractTagFileCreator{
   }
 
   @Override
-  DigitalObject createDigitalObject(Path tagFile) throws Exception{
+  DigitalObject createDigitalObject(Path tagFile, Bag theBag) throws Exception{
     Unmarshaller unmarshaller = org.eclipse.persistence.jaxb.JAXBContext.newInstance(DigitalObject.class).createUnmarshaller();
     return (DigitalObject) unmarshaller.unmarshal(Files.newInputStream(tagFile));
   }
