@@ -64,10 +64,10 @@ public abstract class AbstractTagFileCreator{
     if(metadataPath == null){
       metadataPath = Paths.get(theBag.getRootDir().toAbsolutePath().toString(), "metadata");
       if(!Files.exists(metadataPath)){
-        System.out.println(ansi().fg(Ansi.Color.GREEN).a("  Creating bag metadata directory at ").bold().a(metadataPath.toAbsolutePath()).reset());
+        AnsiUtil.printInfo(MESSAGES.getString("creating_metadata_directory"), metadataPath.toAbsolutePath().toString());
         Files.createDirectory(metadataPath);
       } else{
-        System.out.println(ansi().fg(Ansi.Color.YELLOW).a("  Skip creating bag metadata directory. ").bold().a(metadataPath.toAbsolutePath()).boldOff().a(" already exists.").reset());
+        AnsiUtil.printInfo(MESSAGES.getString("skip_creating_metadata_directory"), metadataPath.toAbsolutePath().toString());
       }
     }
     return metadataPath;

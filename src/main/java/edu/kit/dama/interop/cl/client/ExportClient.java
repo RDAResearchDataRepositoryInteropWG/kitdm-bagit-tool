@@ -33,6 +33,9 @@ import edu.kit.jcommander.generic.status.CommandStatus;
 import edu.kit.jcommander.generic.status.Status;
 import gov.loc.repository.bagit.util.PathUtils;
 import java.io.File;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,6 +43,7 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import org.apache.commons.io.FileUtils;
 
 /**
  * Client implementation for exporting digital objects from KIT Data
@@ -68,6 +72,16 @@ public class ExportClient{
       if(params.metadataFile != null){
         metadataFile = Paths.get(params.metadataFile);
       }
+
+      AnsiUtil.printInfo(MESSAGES.getString("checking_profile_url"), profileUrl);
+      AnsiUtil.printInfo(MESSAGES.getString("profile_url_valid"), new URL(profileUrl).toString());
+
+      if(!Files.exists(metadataFile) || !Files.isReadable(metadataFile)){
+        AnsiUtil.printError(MESSAGES.getString("metadata_not_found"), metadataFile.toAbsolutePath().toString());
+        status.setStatusCode(Status.FAILED);
+        return status;
+      }
+
       destination = Paths.get(params.destination);
       if(Files.exists(destination) && params.force){
         AnsiUtil.printWarning(MESSAGES.getString("removing_existing_bag_root"), destination.toAbsolutePath().toString());
@@ -128,13 +142,21 @@ public class ExportClient{
     //add only external identifier as all other metadata elements must be added from the properties files provided via --metadata argument
     builder = builder.addMetadata("External-Identifier", digitalObjectId);
 
-    //create and add tagfiles
+    //create and add metadata tagfiles
     DCTagFileCreator.createInstance().createAndAddTagFile(toExport, builder);
     BMDTagFileCreator.createInstance().createAndAddTagFile(toExport, builder);
     //add mets tagfile, which also includes adding all payload files
     METSTagFileCreator.createInstance().createAndAddTagFile(toExport, builder);
     //finally, create datacite metadata (must be at the end as it contains information created in beforehand)
     DataCiteTagFileCreator.createInstance(MDM.getAuthorizationContext().getUserId().toString()).createAndAddTagFile(toExport, builder);
+
+    //store profile to bag    
+    InputStream profileStream = new URL(profileUrl).openConnection().getInputStream();
+    Path profilePath = Paths.get(builder.getBag().getRootDir().toAbsolutePath().toString(), "metadata", "profile", "profile.json");
+    AnsiUtil.printInfo(MESSAGES.getString("writing_profile"), profileUrl, profilePath.toString());
+    FileUtils.copyInputStreamToFile(profileStream, profilePath.toFile());
+    builder.addTagfile(profilePath.toUri());
+
     //add payload oxum just for verification against profile
     final String payloadOxum = PathUtils.generatePayloadOxum(PathUtils.getDataDir(builder.getBag().getVersion(), destination));
     builder.getBag().getMetadata().upsertPayloadOxum(payloadOxum);
