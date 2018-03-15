@@ -24,7 +24,6 @@ import edu.kit.dama.interop.util.AnsiUtil;
 import edu.kit.dama.interop.util.BagBuilder;
 import edu.kit.dama.interop.util.DataCiteResourceHelper;
 import edu.kit.dama.mdm.base.DigitalObject;
-import edu.kit.dama.mdm.base.UserData;
 import edu.kit.dama.util.Constants;
 import edu.kit.dama.util.DCTransformationHelper;
 import gov.loc.repository.bagit.domain.Bag;
@@ -42,7 +41,6 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import org.apache.commons.io.FileUtils;
 import org.datacite.schema.kernel_4.Resource;
-import org.datacite.schema.kernel_4.Resource.Creators.Creator;
 
 /**
  *
@@ -122,13 +120,15 @@ public class DataCiteTagFileCreator extends AbstractTagFileCreator{
     if(identifier == null){
       AnsiUtil.printWarning(MESSAGES.getString("no_identifier_detected"));
       List<String> internalIdentifier = theBag.getMetadata().get("Internal_Identifier");
-      if(!internalIdentifier.isEmpty()){
+      if(internalIdentifier != null && !internalIdentifier.isEmpty()){
         AnsiUtil.printWarning(MESSAGES.getString("using_internal_identifier"));
         identifier = internalIdentifier.get(0);
       } else{
         identifier = UUID.randomUUID().toString();
         AnsiUtil.printWarning(MESSAGES.getString("internal_identifier_not_found"), identifier);
       }
+    } else{
+      AnsiUtil.printInfo(MESSAGES.getString("identifier_detected"), identifier);
     }
 
     DigitalObject object = DigitalObject.factoryNewDigitalObject(identifier);
@@ -138,7 +138,7 @@ public class DataCiteTagFileCreator extends AbstractTagFileCreator{
       object.setLabel("Created from " + getMetadataType() + " metadata.");
     }
 
-    List<Creator> creators = resource.getCreators().getCreator();
+    /* List<Creator> creators = resource.getCreators().getCreator();
     if(!creators.isEmpty()){
       Creator creator = creators.get(0);
       if(!creator.getNameIdentifier().isEmpty()){
@@ -150,8 +150,9 @@ public class DataCiteTagFileCreator extends AbstractTagFileCreator{
       } else{
         object.setUploader(UserData.WORLD_USER);
       }
-    }
-
+    }*/
+    //@TODO Obtain caller from database and assign as uploader
+    //object.setUploader(UserData.WORLD_USER);
     return object;
   }
 }

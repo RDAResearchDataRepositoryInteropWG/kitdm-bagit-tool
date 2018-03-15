@@ -136,6 +136,7 @@ public class ImportClient{
       throw new EntityNotFoundException(StringUtils.substitute(MESSAGES.getString("investigation_not_found"), investigationId));
     }
 
+    //obtain caller user
     Path bagRoot = source;
 
     if(!Files.isDirectory(source)){
@@ -160,7 +161,6 @@ public class ImportClient{
     }
 
     AnsiUtil.printInfo(MESSAGES.getString("load_bag_from_folder"), bagRoot.toString());
-
     BagBuilder builder = BagBuilder.load(bagRoot.toAbsolutePath());
 
     //quick check profile conformance before starting to fetch anything

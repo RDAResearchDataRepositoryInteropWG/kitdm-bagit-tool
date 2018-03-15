@@ -122,7 +122,7 @@ fi
 
 exec "$JAVACMD" $JAVA_OPTS -Dlog4j.configuration="$BASEDIR"/log4j.xml -Xmx512m \
   -classpath "$CLASSPATH" \
-  -Dapp.name="DSWorkbench" \
+  -Dapp.name="BagItTool" \
   -Dapp.pid="$$" \
   -Dapp.repo="$REPO" \
   -Dapp.home="$BASEDIR" \

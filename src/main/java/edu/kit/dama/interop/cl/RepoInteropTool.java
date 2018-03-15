@@ -19,6 +19,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 import edu.kit.dama.interop.cl.command.ExportCommand;
 import edu.kit.dama.interop.cl.command.ImportCommand;
+import edu.kit.dama.interop.cl.command.ListCommand;
 import edu.kit.jcommander.generic.parameter.CommandLineParameters;
 import edu.kit.jcommander.generic.status.CommandStatus;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public class RepoInteropTool{
   static{
     COMMANDS.add(new ExportCommand());
     COMMANDS.add(new ImportCommand());
+    COMMANDS.add(new ListCommand());
   }
 
   public static void main(String[] args) throws Exception{

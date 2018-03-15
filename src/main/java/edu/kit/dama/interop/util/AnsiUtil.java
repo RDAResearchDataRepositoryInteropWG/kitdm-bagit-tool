@@ -48,6 +48,14 @@ public class AnsiUtil{
     }
   }
 
+  public static void printTextColored(String message, Ansi.Color foreground, String... highlighted){
+    Map valuesMap = new HashMap();
+    for(int i = 0; i < highlighted.length; i++){
+      valuesMap.put(Integer.toString(i + 1), Ansi.ansi().bold().a(highlighted[i]).boldOff().toString());
+    }
+    System.out.println(ansi().fg(foreground).a(StrSubstitutor.replace(message, valuesMap)).reset());
+  }
+
   private static void printText(String message, Ansi.Color foreground, String... highlighted){
     Map valuesMap = new HashMap();
     for(int i = 0; i < highlighted.length; i++){

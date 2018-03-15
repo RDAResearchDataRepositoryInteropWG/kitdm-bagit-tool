@@ -17,9 +17,9 @@ package edu.kit.dama.interop.util;
 
 import edu.kit.dama.entities.dc40.Identifier;
 import edu.kit.dama.entities.dc40.UnknownInformationConstants;
-import edu.kit.dama.mdm.base.DigitalObject;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ResourceBundle;
 import org.datacite.schema.kernel_4.Resource;
 import org.datacite.schema.kernel_4.TitleType;
 
@@ -29,21 +29,31 @@ import org.datacite.schema.kernel_4.TitleType;
  */
 public final class DataCiteResourceHelper{
 
+  private static final ResourceBundle MESSAGES = ResourceBundle.getBundle("edu.kit.dama.interop.util.MessageBundle");
+
   public static String getIdentifier(Resource resource){
     String resourceIdentifier = resource.getIdentifier().getValue();
-    try{
-      UnknownInformationConstants.valueOf(resourceIdentifier);
-      resourceIdentifier = null;
-    } catch(IllegalArgumentException ex){
-      //unknown value, identifier can be used
+    AnsiUtil.printInfo(MESSAGES.getString("checking_for_placeholder_identifier"), resourceIdentifier);
+    if(resourceIdentifier != null){
+      for(UnknownInformationConstants constant : UnknownInformationConstants.values()){
+        if(constant.getValue().equals(resourceIdentifier)){
+          AnsiUtil.printInfo(MESSAGES.getString("placeholder_identifier_found"), resourceIdentifier);
+          resourceIdentifier = null;
+          break;
+        }
+      }
+    } else{
+      AnsiUtil.printInfo(MESSAGES.getString("no_identifier_found"), resourceIdentifier);
     }
 
     if(resourceIdentifier == null){
-
-      for(Resource.AlternateIdentifiers.AlternateIdentifier id : resource.getAlternateIdentifiers().getAlternateIdentifier()){
-        if(Identifier.IDENTIFIER_TYPE.INTERNAL.toString().equals(id.getAlternateIdentifierType())){
-          resourceIdentifier = id.getValue();
-          break;
+      AnsiUtil.printInfo(MESSAGES.getString("checking_for_internal_identifier"));
+      if(resource.getAlternateIdentifiers() != null){
+        for(Resource.AlternateIdentifiers.AlternateIdentifier id : resource.getAlternateIdentifiers().getAlternateIdentifier()){
+          if(Identifier.IDENTIFIER_TYPE.INTERNAL.toString().equals(id.getAlternateIdentifierType())){
+            resourceIdentifier = id.getValue();
+            break;
+          }
         }
       }
     }
@@ -66,6 +76,10 @@ public final class DataCiteResourceHelper{
 
   public static String getTitle(Resource resource, TitleType titleType){
     for(Resource.Titles.Title title : resource.getTitles().getTitle()){
+      //if type is OTHER allow to return title without provided type
+      if(title.getTitleType() == null && titleType.equals(TitleType.OTHER)){
+        return title.getValue();
+      }
       if(titleType.equals(title.getTitleType())){
         return title.getValue();
       }

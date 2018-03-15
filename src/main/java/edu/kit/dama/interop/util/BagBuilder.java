@@ -67,7 +67,7 @@ public class BagBuilder{
   /**
    * Default profile used if no other profile is provided.
    */
-  public static String BAGIT_PROFILE_LOCATION = "https://raw.githubusercontent.com/RDAResearchDataRepositoryInteropWG/bagit-profiles/master/kitdm/1.0/profile.json";
+  public static String BAGIT_PROFILE_LOCATION = "https://raw.githubusercontent.com/RDAResearchDataRepositoryInteropWG/bagit-profiles/master/generic/0.1/profile.json";
 
   enum FILE_TYPE{
     PAYLOAD,
@@ -125,7 +125,6 @@ public class BagBuilder{
    */
   BagBuilder(Path rootDir, String profileUrl) throws Exception{
     theBag = new Bag(new Version(0, 97));
-    profileLocation = profileUrl;
     theBag.setRootDir(rootDir);
     theBag.setFileEncoding(Charset.forName("UTF-8"));
     bagMetadata = new Metadata();
@@ -184,6 +183,13 @@ public class BagBuilder{
   BagBuilder(Bag existing){
     this.theBag = new Bag(existing);
     bagMetadata = theBag.getMetadata();
+    List<String> profileId = bagMetadata.get("BagIt-Profile-Identifier");
+    if(profileId != null && !profileId.isEmpty()){
+      profileLocation = profileId.get(0);
+      AnsiUtil.printInfo(MESSAGES.getString("using_profile_from_metadata"), profileLocation);
+    } else{
+      AnsiUtil.printInfo(MESSAGES.getString("using_default_profile"), profileLocation);
+    }
   }
 
   /**
@@ -243,7 +249,7 @@ public class BagBuilder{
    */
   public void validateAndAddMetadataProperties(Properties properties) throws Exception{
     Set<Entry<String, BagInfoRequirement>> requirements = profile.getBagInfoRequirements().entrySet();
-    
+
     for(Entry<String, BagInfoRequirement> requirement : requirements){
       String propValue = properties.getProperty(requirement.getKey());
       boolean elementAlreadyExists = false;
@@ -485,7 +491,7 @@ public class BagBuilder{
    * @throws Exception If the bag is not compliant to the specified profile.
    */
   public void validateProfileConformance() throws Exception{
-    AnsiUtil.printInfo(MESSAGES.getString("performing_profile_check"));
+    AnsiUtil.printInfo(MESSAGES.getString("performing_profile_check"), profileLocation);
     BagProfileChecker.bagConformsToProfile(new URL(profileLocation).openStream(), theBag);
     AnsiUtil.printInfo(MESSAGES.getString("profile_check_successful"), profileLocation);
   }

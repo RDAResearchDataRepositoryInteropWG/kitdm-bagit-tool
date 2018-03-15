@@ -25,8 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ResourceBundle;
 import org.apache.commons.io.FilenameUtils;
-import org.fusesource.jansi.Ansi;
-import static org.fusesource.jansi.Ansi.ansi;
 
 /**
  *
