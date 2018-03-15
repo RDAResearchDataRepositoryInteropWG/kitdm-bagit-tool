@@ -71,6 +71,7 @@ Import the digital object contained in ./theBag into the local repository. The r
 ## Known Issues/Current Limitations
 
 * The export only contains base metadata. It does NOT include authorization information, audit events or externally stored metadata, e.g. from MetaStore.
+* Import may fail if using different KIT DM instances with different user information as source and destination platform
 * Bags can only be serialized as ZIP files
 * No DataCrate support, yet
 
